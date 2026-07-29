@@ -54,6 +54,7 @@ Paid MCP PoC の設計判断と一次情報の記録。
 - 未払い時: `inputRequired({ inputRequests: { payment: inputRequired.elicitUrl({ url: checkoutUrl }) } })` 相当のレスポンスを返す。
 - 支払い後リトライ: `inputResponses` 内の `payment_handle` を KV で照合し、paid ならツール実行。
 - PoC では都度課金（consume）モデルを採用。
+- クライアントは `_meta.io.modelcontextprotocol/clientCapabilities` に `elicitation: { url: {} }` を宣言すること（G2-1 実証済み）。
 
 ---
 

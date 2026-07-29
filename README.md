@@ -103,7 +103,7 @@ curl -s -X POST http://127.0.0.1:8787/mcp \
 bash scripts/g2-test.sh
 ```
 
-G2-1（未払い → `input_required`）は `.dev.vars` に Stripe テストキーが必要です。
+G2-1（未払い → `input_required`）は `.dev.vars` に Stripe テストキーが必要です。クライアントの `_meta.clientCapabilities` に `elicitation.url` の宣言が必要です。
 
 ```bash
 # Stripe CLI で webhook 転送
