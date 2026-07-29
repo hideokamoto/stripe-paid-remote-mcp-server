@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "stripe-paid-remote-mcp-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "kv_namespaces": [
+    {
+      // Replace with output of: wrangler kv namespace create ENTITLEMENTS
+      "binding": "ENTITLEMENTS",
+      "id": "local-dev-placeholder"
+    }
+  ],
+  "vars": {
+    "STRIPE_PRICE_ID": "price_placeholder"
+  }
+}
