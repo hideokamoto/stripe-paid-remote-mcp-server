@@ -14,6 +14,7 @@ import {
   resolveEntitlementStatus,
   resolveEntitlementStatusKvOnly,
 } from '../../stripe/client';
+import { recordPremiumReportExecution } from '../../stripe/metering';
 import type { Env } from '../../types';
 
 interface PaymentRequestState {
@@ -32,6 +33,41 @@ function parseRequestState(raw: string | undefined): PaymentRequestState | null 
   } catch {
     return null;
   }
+}
+
+async function executePremiumReport(
+  env: Env,
+  stripe: ReturnType<typeof createStripeClient> | null,
+  activeHandle: string,
+  topic: string,
+): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
+  const consumed = await consumeEntitlement(env.ENTITLEMENTS, activeHandle);
+  if (!consumed) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to consume payment handle: ${activeHandle}` }],
+    };
+  }
+
+  let meterNote = '';
+  if (stripe && consumed.customerId) {
+    try {
+      await recordPremiumReportExecution(stripe, env, consumed.customerId, activeHandle);
+      meterNote = `\n- Meter event recorded for customer ${consumed.customerId}`;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      meterNote = `\n- Meter event failed: ${message}`;
+    }
+  }
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Premium Report: "${topic}"\n\n📊 Analysis complete.\n- Trend: upward\n- Confidence: 94%\n- Payment handle ${activeHandle} consumed.${meterNote}`,
+      },
+    ],
+  };
 }
 
 export function registerPremiumReportTool(server: McpServer, env: Env): void {
@@ -90,23 +126,7 @@ export function registerPremiumReportTool(server: McpServer, env: Env): void {
           };
         }
 
-        // status === 'paid' — consume and execute
-        const consumed = await consumeEntitlement(env.ENTITLEMENTS, activeHandle);
-        if (!consumed) {
-          return {
-            isError: true,
-            content: [{ type: 'text' as const, text: `Failed to consume payment handle: ${activeHandle}` }],
-          };
-        }
-
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Premium Report: "${topic}"\n\n📊 Analysis complete.\n- Trend: upward\n- Confidence: 94%\n- Payment handle ${activeHandle} consumed.`,
-            },
-          ],
-        };
+        return executePremiumReport(env, stripe, activeHandle, topic);
       }
 
       // First call: issue payment handle and checkout URL

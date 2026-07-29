@@ -3,6 +3,7 @@ export type EntitlementStatus = 'pending' | 'paid' | 'used' | 'expired';
 export interface EntitlementRecord {
   status: EntitlementStatus;
   sessionId?: string;
+  customerId?: string;
   createdAt: number;
 }
 
@@ -36,11 +37,16 @@ export async function getEntitlement(
   return JSON.parse(raw) as EntitlementRecord;
 }
 
-export async function markEntitlementPaid(kv: KVNamespace, handle: string): Promise<void> {
+export async function markEntitlementPaid(
+  kv: KVNamespace,
+  handle: string,
+  customerId?: string,
+): Promise<void> {
   const existing = await getEntitlement(kv, handle);
   const record: EntitlementRecord = {
     status: 'paid',
     sessionId: existing?.sessionId,
+    customerId: customerId ?? existing?.customerId,
     createdAt: existing?.createdAt ?? Date.now(),
   };
   await kv.put(entitlementKey(handle), JSON.stringify(record), {
@@ -48,17 +54,20 @@ export async function markEntitlementPaid(kv: KVNamespace, handle: string): Prom
   });
 }
 
-export async function consumeEntitlement(kv: KVNamespace, handle: string): Promise<boolean> {
+export async function consumeEntitlement(
+  kv: KVNamespace,
+  handle: string,
+): Promise<EntitlementRecord | null> {
   const record = await getEntitlement(kv, handle);
   if (!record || record.status !== 'paid') {
-    return false;
+    return null;
   }
 
   const used: EntitlementRecord = { ...record, status: 'used' };
   await kv.put(entitlementKey(handle), JSON.stringify(used), {
     expirationTtl: HANDLE_TTL_SECONDS,
   });
-  return true;
+  return record;
 }
 
 export async function markEntitlementExpired(kv: KVNamespace, handle: string): Promise<void> {

@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:g2": "bash scripts/g2-test.sh",
+    "test:g3": "bash scripts/g3-test.sh",
+    "setup:meter": "bash scripts/setup-meter.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/hono": "^2.0.0",

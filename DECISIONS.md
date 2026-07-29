@@ -4,13 +4,14 @@ Paid MCP PoC の設計判断と一次情報の記録。
 
 ## 完了予定日
 
-| Phase | 完了予定日 |
-|---|---|
-| 0 | 2026-07-29 |
-| 1 | 2026-07-30 |
-| 2 | 2026-08-01 |
-| 3 | 2026-08-02（任意） |
-| 5 | 2026-08-03 |
+| Phase | 完了予定日 | 状態 |
+|---|---|---|
+| 0 | 2026-07-29 | ✅ 完了 |
+| 1 | 2026-07-30 | ✅ 完了 |
+| 2 | 2026-08-01 | ✅ 完了 |
+| 3 | 2026-08-02 | ✅ 完了 |
+| 4 | — | ⏸ stretch（未着手） |
+| 5 | 2026-08-03 | ✅ 完了 |
 
 ---
 
@@ -135,3 +136,43 @@ Paid MCP PoC の設計判断と一次情報の記録。
 - webhook 到達前のリトライを前提とする。
 - KV miss / pending 時は `stripe.checkout.sessions.retrieve(client_reference_id)` で直接照会してから判定。
 - handle TTL: 30 分（pending）。paid → consume（一回性）で used に遷移。
+
+---
+
+## D-008: Stripe Billing Meters（Phase 3）
+
+**参照**: https://docs.stripe.com/api/billing/meter-event/create
+
+**要点**:
+
+- 旧 `createUsageRecord()` は非推奨。2025-03-31.basil 以降は Billing Meters API を使用。
+- Meter 作成: `event_name=premium_report_executed`, aggregation=sum, customer_mapping=stripe_customer_id。
+- イベント送信: `stripe.billing.meterEvents.create({ event_name, identifier, payload })`。
+- `identifier` に payment handle（UUID）を使い、重複送信を防止。
+
+**採用 Meter**: `mtr_test_61V7l6QxK1xWhMXLA41R6cY3JBGSPFSS`（event_name: `premium_report_executed`）
+
+**判断への影響**:
+
+- Checkout に `customer_creation: 'always'` を設定し、webhook / Stripe フォールバック照会時に `customerId` を KV に保存。
+- `premium_report` 実行成功時に `recordPremiumReportExecution()` で meter event を送信。
+- セットアップ: `bash scripts/setup-meter.sh`、検証: `bash scripts/g3-test.sh <customer_id>`。
+
+---
+
+## D-009: OAuth（Phase 4 — 未着手・追跡課題）
+
+**判断**: G2 完了後の stretch として **Phase 4 は未着手**。entitlement キーは引き続き `payment_handle` ベース。
+
+**追跡課題**:
+
+1. `workers-oauth-provider` で Authorization Server を Workers 上に構築
+2. entitlement キーを handle → OAuth `sub` に移行
+3. DCR は非推奨だが 12 ヶ月互換窓あり → PoC では DCR 可
+4. **CIMD（Client ID Metadata Documents）対応** — DCR 廃止後の移行パス（PR #2858）
+5. Claude.ai コネクタ登録・接続テストは Phase 4 以降
+
+**参照**:
+
+- https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration
+- https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2858（DCR 非推奨 / CIMD 推奨）

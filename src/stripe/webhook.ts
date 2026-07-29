@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { markEntitlementPaid } from '../kv/entitlement';
 import type { Env } from '../types';
-import { createStripeClient } from './client';
+import { createStripeClient, extractCustomerId } from './client';
 
 export async function handleStripeWebhook(
   request: Request,
@@ -33,8 +33,9 @@ export async function handleStripeWebhook(
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const handle = session.client_reference_id;
+    const customerId = extractCustomerId(session.customer);
     if (handle) {
-      await markEntitlementPaid(env.ENTITLEMENTS, handle);
+      await markEntitlementPaid(env.ENTITLEMENTS, handle, customerId);
     }
   }
 
