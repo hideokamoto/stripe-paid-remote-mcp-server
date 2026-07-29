@@ -1,0 +1,1 @@
+# stripe-paid-remote-mcp-server
