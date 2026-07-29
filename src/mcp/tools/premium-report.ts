@@ -1,5 +1,4 @@
 import {
-  acceptedContent,
   inputRequired,
   type McpServer,
 } from '@modelcontextprotocol/server';
@@ -21,10 +20,6 @@ interface PaymentRequestState {
   handle: string;
   sessionId: string;
 }
-
-const paymentHandleSchema = z.object({
-  handle: z.string().uuid(),
-});
 
 function parseRequestState(raw: string | undefined): PaymentRequestState | null {
   if (!raw) return null;
@@ -85,14 +80,7 @@ export function registerPremiumReportTool(server: McpServer, env: Env): void {
 
         // Retry path: client returned with inputResponses after payment
         if (requestState) {
-          const { handle, sessionId } = requestState;
-
-          const handleFromResponse = acceptedContent(
-            ctx.mcpReq.inputResponses,
-            'payment',
-            paymentHandleSchema,
-          );
-          const activeHandle = handleFromResponse?.handle ?? handle;
+          const { handle: activeHandle, sessionId } = requestState;
 
           const secretKey = env.STRIPE_SECRET_KEY;
           const stripe = secretKey ? createStripeClient(secretKey) : null;

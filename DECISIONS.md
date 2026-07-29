@@ -136,6 +136,7 @@ Paid MCP PoC の設計判断と一次情報の記録。
 - webhook 到達前のリトライを前提とする。
 - KV miss / pending 時は `stripe.checkout.sessions.retrieve(client_reference_id)` で直接照会してから判定。
 - handle TTL: 30 分（pending）。paid → consume（一回性）で used に遷移。
+- **既知の制限（PoC）**: KV の read-modify-write は原子的ではない。同一 handle への並行リクエストで二重消費の可能性あり。本番では D1 条件付き UPDATE または Durable Object への移行を検討（CodeRabbit 指摘、追跡課題）。
 
 ---
 
