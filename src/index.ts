@@ -33,11 +33,8 @@ app.get('/stripe/ping', async (c: Context) => {
   });
 
   try {
-    const balance = await stripe.balance.retrieve();
-    return c.json({
-      ok: true,
-      available: balance.available.map((b) => ({ amount: b.amount, currency: b.currency })),
-    });
+    await stripe.balance.retrieve();
+    return c.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ ok: false, error: message }, 502);

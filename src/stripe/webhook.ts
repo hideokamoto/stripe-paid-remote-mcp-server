@@ -3,6 +3,21 @@ import { markEntitlementPaid } from '../kv/entitlement';
 import type { Env } from '../types';
 import { createStripeClient, extractCustomerId } from './client';
 
+async function handleCheckoutSessionPaid(
+  session: Stripe.Checkout.Session,
+  env: Env,
+): Promise<void> {
+  if (session.payment_status !== 'paid') {
+    return;
+  }
+
+  const handle = session.client_reference_id;
+  const customerId = extractCustomerId(session.customer);
+  if (handle) {
+    await markEntitlementPaid(env.ENTITLEMENTS, handle, customerId);
+  }
+}
+
 export async function handleStripeWebhook(
   request: Request,
   env: Env,
@@ -30,13 +45,13 @@ export async function handleStripeWebhook(
     return Response.json({ error: `Webhook signature verification failed: ${message}` }, { status: 400 });
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const handle = session.client_reference_id;
-    const customerId = extractCustomerId(session.customer);
-    if (handle) {
-      await markEntitlementPaid(env.ENTITLEMENTS, handle, customerId);
-    }
+  switch (event.type) {
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded':
+      await handleCheckoutSessionPaid(event.data.object as Stripe.Checkout.Session, env);
+      break;
+    default:
+      break;
   }
 
   return Response.json({ received: true });

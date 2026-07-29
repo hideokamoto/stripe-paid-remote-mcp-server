@@ -8,7 +8,8 @@ if [[ ! -f .dev.vars ]]; then
 fi
 
 STRIPE_KEY=$(grep '^STRIPE_SECRET_KEY=' .dev.vars | cut -d= -f2-)
-EVENT_NAME="${STRIPE_METER_EVENT_NAME:-premium_report_executed}"
+EVENT_NAME=$(grep '^STRIPE_METER_EVENT_NAME=' .dev.vars 2>/dev/null | cut -d= -f2- || true)
+EVENT_NAME="${EVENT_NAME:-premium_report_executed}"
 
 EXISTING=$(curl -s "https://api.stripe.com/v1/billing/meters?limit=20" -u "$STRIPE_KEY:" | jq -r ".data[] | select(.event_name==\"$EVENT_NAME\") | .id" | head -1)
 

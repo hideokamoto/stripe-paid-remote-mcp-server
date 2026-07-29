@@ -42,8 +42,11 @@ export async function createCheckoutSession(
     throw new Error('STRIPE_PRICE_ID is not configured');
   }
 
-  const successUrl = env.CHECKOUT_SUCCESS_URL ?? 'http://localhost:8787/health?paid=1';
-  const cancelUrl = env.CHECKOUT_CANCEL_URL ?? 'http://localhost:8787/health?paid=0';
+  const successUrl = env.CHECKOUT_SUCCESS_URL;
+  const cancelUrl = env.CHECKOUT_CANCEL_URL;
+  if (!successUrl || !cancelUrl) {
+    throw new Error('CHECKOUT_SUCCESS_URL and CHECKOUT_CANCEL_URL must be configured');
+  }
 
   return stripe.checkout.sessions.create({
     mode: 'payment',

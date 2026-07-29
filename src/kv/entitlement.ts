@@ -43,6 +43,13 @@ export async function markEntitlementPaid(
   customerId?: string,
 ): Promise<void> {
   const existing = await getEntitlement(kv, handle);
+  if (existing?.status === 'used' || existing?.status === 'expired') {
+    return;
+  }
+  if (existing && existing.status !== 'pending') {
+    return;
+  }
+
   const record: EntitlementRecord = {
     status: 'paid',
     sessionId: existing?.sessionId,

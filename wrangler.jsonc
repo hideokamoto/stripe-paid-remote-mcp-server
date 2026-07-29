@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat_v2"],
   "kv_namespaces": [
     {
+      // Replace with output of: wrangler kv namespace create ENTITLEMENTS
       "binding": "ENTITLEMENTS",
       "id": "local-dev-placeholder"
     }

@@ -80,89 +80,97 @@ export function registerPremiumReportTool(server: McpServer, env: Env): void {
       }),
     },
     async ({ topic }, ctx) => {
-      const requestState = parseRequestState(ctx.mcpReq.requestState());
+      try {
+        const requestState = parseRequestState(ctx.mcpReq.requestState());
 
-      // Retry path: client returned with inputResponses after payment
-      if (requestState) {
-        const { handle, sessionId } = requestState;
+        // Retry path: client returned with inputResponses after payment
+        if (requestState) {
+          const { handle, sessionId } = requestState;
 
-        const handleFromResponse = acceptedContent(
-          ctx.mcpReq.inputResponses,
-          'payment',
-          paymentHandleSchema,
-        );
-        const activeHandle = handleFromResponse?.handle ?? handle;
+          const handleFromResponse = acceptedContent(
+            ctx.mcpReq.inputResponses,
+            'payment',
+            paymentHandleSchema,
+          );
+          const activeHandle = handleFromResponse?.handle ?? handle;
 
+          const secretKey = env.STRIPE_SECRET_KEY;
+          const stripe = secretKey ? createStripeClient(secretKey) : null;
+
+          const status = stripe
+            ? await resolveEntitlementStatus(env.ENTITLEMENTS, stripe, activeHandle)
+            : await resolveEntitlementStatusKvOnly(env.ENTITLEMENTS, activeHandle);
+
+          if (status === 'used') {
+            return {
+              isError: true,
+              content: [{ type: 'text' as const, text: `Payment handle already used: ${activeHandle}` }],
+            };
+          }
+
+          if (status === 'expired' || status === 'missing') {
+            return {
+              isError: true,
+              content: [{ type: 'text' as const, text: `Payment handle expired or invalid: ${activeHandle}` }],
+            };
+          }
+
+          if (status === 'pending') {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Payment not yet confirmed for handle ${activeHandle}. Complete checkout at session ${sessionId} and retry.`,
+                },
+              ],
+            };
+          }
+
+          return executePremiumReport(env, stripe, activeHandle, topic);
+        }
+
+        // First call: issue payment handle and checkout URL
         const secretKey = env.STRIPE_SECRET_KEY;
-        const stripe = secretKey ? createStripeClient(secretKey) : null;
-
-        const status = stripe
-          ? await resolveEntitlementStatus(env.ENTITLEMENTS, stripe, activeHandle)
-          : await resolveEntitlementStatusKvOnly(env.ENTITLEMENTS, activeHandle);
-
-        if (status === 'used') {
+        if (!secretKey) {
           return {
             isError: true,
-            content: [{ type: 'text' as const, text: `Payment handle already used: ${activeHandle}` }],
+            content: [{ type: 'text' as const, text: 'Payment system not configured' }],
           };
         }
 
-        if (status === 'expired' || status === 'missing') {
+        const stripe = createStripeClient(secretKey);
+        const paymentHandle = crypto.randomUUID();
+        const session = await createCheckoutSession(stripe, env, paymentHandle);
+        const checkoutUrl = session.url;
+
+        if (!checkoutUrl || !session.id) {
           return {
             isError: true,
-            content: [{ type: 'text' as const, text: `Payment handle expired or invalid: ${activeHandle}` }],
+            content: [{ type: 'text' as const, text: 'Failed to create Stripe Checkout session' }],
           };
         }
 
-        if (status === 'pending') {
-          return {
-            isError: true,
-            content: [
-              {
-                type: 'text' as const,
-                text: `Payment not yet confirmed for handle ${activeHandle}. Complete checkout at session ${sessionId} and retry.`,
-              },
-            ],
-          };
-        }
+        await createPendingEntitlement(env.ENTITLEMENTS, paymentHandle, session.id);
 
-        return executePremiumReport(env, stripe, activeHandle, topic);
-      }
+        const state: PaymentRequestState = { handle: paymentHandle, sessionId: session.id };
 
-      // First call: issue payment handle and checkout URL
-      const secretKey = env.STRIPE_SECRET_KEY;
-      if (!secretKey) {
+        return inputRequired({
+          inputRequests: {
+            payment: inputRequired.elicitUrl({
+              url: checkoutUrl,
+              message: `Payment required for premium report. Use payment_handle: ${paymentHandle}`,
+            }),
+          },
+          requestState: JSON.stringify(state),
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         return {
           isError: true,
-          content: [{ type: 'text' as const, text: 'Payment system not configured' }],
+          content: [{ type: 'text' as const, text: `premium_report failed: ${message}` }],
         };
       }
-
-      const stripe = createStripeClient(secretKey);
-      const paymentHandle = crypto.randomUUID();
-      const session = await createCheckoutSession(stripe, env, paymentHandle);
-      const checkoutUrl = session.url;
-
-      if (!checkoutUrl || !session.id) {
-        return {
-          isError: true,
-          content: [{ type: 'text' as const, text: 'Failed to create Stripe Checkout session' }],
-        };
-      }
-
-      await createPendingEntitlement(env.ENTITLEMENTS, paymentHandle, session.id);
-
-      const state: PaymentRequestState = { handle: paymentHandle, sessionId: session.id };
-
-      return inputRequired({
-        inputRequests: {
-          payment: inputRequired.elicitUrl({
-            url: checkoutUrl,
-            message: `Payment required for premium report. Use payment_handle: ${paymentHandle}`,
-          }),
-        },
-        requestState: JSON.stringify(state),
-      });
     },
   );
 }

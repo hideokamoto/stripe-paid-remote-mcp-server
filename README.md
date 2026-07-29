@@ -99,11 +99,35 @@ stripe trigger checkout.session.completed
 
 | Gate | コマンド | 内容 |
 |---|---|---|
-| G1 | README 内 curl 例 | ヘッダー検証、roll_dice、server/discover |
+| G1 | `bash scripts/g1-test.sh` | ヘッダー検証、roll_dice、server/discover、tools/list |
 | G2 | `bash scripts/g2-test.sh` | MRTR ペイウォール 4 パターン |
 | G3 | `bash scripts/g3-test.sh <customer_id>` | Billing Meter event 計上確認 |
 
+```bash
+npm run test:g1
+npm run test:g2
+npm run test:g3 <customer_id>
+```
+
 G2-1 には `_meta.clientCapabilities` に `elicitation: { url: {} }` が必要です。
+
+## デプロイ
+
+```bash
+# 1. KV Namespace を作成し wrangler.jsonc の id を更新
+wrangler kv namespace create ENTITLEMENTS
+# → 出力された id を wrangler.jsonc の kv_namespaces[0].id に設定
+
+# 2. シークレットと本番 URL を設定
+wrangler secret put STRIPE_SECRET_KEY
+wrangler secret put STRIPE_WEBHOOK_SECRET
+# wrangler.jsonc vars または secret で CHECKOUT_SUCCESS_URL / CHECKOUT_CANCEL_URL を設定
+
+# 3. デプロイ
+npm run deploy
+```
+
+`wrangler.jsonc` の `local-dev-placeholder` はローカル開発用です。本番デプロイ前に実際の KV Namespace ID へ置き換えてください。
 
 ## プロジェクト構成
 
@@ -120,6 +144,7 @@ src/
     ├── webhook.ts              # constructEventAsync
     └── metering.ts             # Billing Meters
 scripts/
+├── g1-test.sh                  # G1 gate
 ├── g2-test.sh                  # G2 gate
 ├── g3-test.sh                  # G3 gate
 └── setup-meter.sh              # Meter 初回作成
