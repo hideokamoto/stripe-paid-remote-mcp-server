@@ -3,7 +3,7 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8787}"
-META='{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"g2-test","version":"1.0.0"}}'
+META='{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{"elicitation":{"url":{}}},"io.modelcontextprotocol/clientInfo":{"name":"g2-test","version":"1.0.0"}}'
 
 mcp_call() {
   local method="$1" name="$2" body="$3"
