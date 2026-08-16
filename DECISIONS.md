@@ -96,6 +96,8 @@ Paid MCP PoC の設計判断と一次情報の記録。
 
 ## D-004: G0 スパイク — SDK v2 on Workers + Hono（G0-b 判断）
 
+> **⚠️ Superseded (PR #2)**: 根拠 4 の `legacy: 'stateless'`（2025 クライアント同一エンドポイント）は `legacy: 'reject'` に変更済み。現行方針は D-001 参照。
+
 **判断**: **SDK v2 `createMcpHandler` を採用。手組み JSON-RPC には切り替えない。**
 
 **根拠**:

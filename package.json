@@ -7,7 +7,7 @@
     "dev": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test",
     "test:g1": "bash scripts/g1-test.sh",
     "test:g2": "bash scripts/g2-test.sh",
     "test:g3": "bash scripts/g3-test.sh",

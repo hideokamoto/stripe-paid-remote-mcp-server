@@ -72,7 +72,7 @@ npm run dev
 
 ### 必要な環境変数（`.dev.vars`）
 
-```
+```dotenv
 REQUEST_STATE_SECRET=<32+ byte HMAC key for MRTR requestState>
 STRIPE_SECRET_KEY=sk_test_...   # または rk_test_...（制限付きキー）
 STRIPE_WEBHOOK_SECRET=whsec_...
