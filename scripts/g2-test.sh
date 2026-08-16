@@ -5,6 +5,11 @@ set -euo pipefail
 BASE_URL="${BASE_URL:-http://127.0.0.1:8787}"
 META='{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{"elicitation":{"url":{}}},"io.modelcontextprotocol/clientInfo":{"name":"g2-test","version":"1.0.0"}}'
 
+if [[ -f .dev.vars ]]; then
+  # shellcheck disable=SC1091
+  set -a && source .dev.vars && set +a
+fi
+
 mcp_call() {
   local method="$1" name="$2" body="$3"
   curl -s -X POST "$BASE_URL/mcp" \
@@ -21,6 +26,11 @@ seed_kv() {
   npx wrangler kv key put "$key" "$value" --binding=ENTITLEMENTS --local 2>/dev/null
 }
 
+mint_request_state() {
+  local handle="$1" session_id="$2"
+  node scripts/mint-request-state.mjs "$handle" "$session_id"
+}
+
 HANDLE_PAID="11111111-1111-4111-8111-111111111111"
 HANDLE_USED="22222222-2222-4222-8222-222222222222"
 HANDLE_EXPIRED="33333333-3333-4333-8333-333333333333"
@@ -28,9 +38,25 @@ HANDLE_EXPIRED="33333333-3333-4333-8333-333333333333"
 retry_premium() {
   local handle="$1"
   local session_id="$2"
-  local request_state="{\"handle\":\"${handle}\",\"sessionId\":\"${session_id}\"}"
+  local request_state
+  request_state="$(mint_request_state "$handle" "$session_id")"
   mcp_call tools/call premium_report \
-    "{\"jsonrpc\":\"2.0\",\"id\":99,\"method\":\"tools/call\",\"params\":{\"name\":\"premium_report\",\"arguments\":{\"topic\":\"Q3 Revenue\"},\"inputResponses\":{\"payment\":{\"action\":\"accept\",\"content\":{\"handle\":\"${handle}\"}}},\"requestState\":$(printf '%s' "$request_state" | jq -Rs .),\"_meta\":${META}}}"
+    "$(jq -n \
+      --arg handle "$handle" \
+      --arg state "$request_state" \
+      --arg meta "$META" \
+      '{
+        jsonrpc: "2.0",
+        id: 99,
+        method: "tools/call",
+        params: {
+          name: "premium_report",
+          arguments: { topic: "Q3 Revenue" },
+          inputResponses: { payment: { action: "accept", content: { handle: $handle } } },
+          requestState: $state,
+          _meta: ($meta | fromjson)
+        }
+      }')"
 }
 
 echo "=== G2-1: Unpaid → input_required (requires STRIPE_SECRET_KEY in .dev.vars) ==="

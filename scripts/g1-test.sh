@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# G1 gate: stateless MCP core verification
+# G1 gate: stateless MCP core verification (2026-07-28)
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8787}"
@@ -21,12 +21,12 @@ mcp_call tools/call roll_dice \
   "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"roll_dice\",\"arguments\":{},\"_meta\":${META}}}"
 echo ""
 
-echo "=== G1-2: Mcp-Method missing → 400 ==="
+echo "=== G1-2: Mcp-Method missing → 400 / -32020 ==="
 curl -s -w "\nHTTP:%{http_code}\n" -X POST "$BASE_URL/mcp" \
   -H 'Content-Type: application/json' \
   -H 'MCP-Protocol-Version: 2026-07-28' \
   -H 'Mcp-Name: roll_dice' \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"roll_dice"}}'
+  -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"roll_dice\",\"arguments\":{},\"_meta\":${META}}}"
 echo ""
 
 echo "=== G1-3: server/discover ==="
@@ -37,3 +37,13 @@ echo ""
 echo "=== G1-4: tools/list (ttlMs / cacheScope) ==="
 mcp_call tools/list list \
   "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/list\",\"params\":{\"_meta\":${META}}}"
+echo ""
+
+echo "=== G1-5: legacy initialize (no envelope) → -32022 ==="
+curl -s -w "\nHTTP:%{http_code}\n" -X POST "$BASE_URL/mcp" \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H 'Mcp-Method: initialize' \
+  -H 'Mcp-Name: initialize' \
+  -d '{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"legacy","version":"1.0.0"}}}'
+echo ""

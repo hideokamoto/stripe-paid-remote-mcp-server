@@ -71,6 +71,7 @@ npm run dev
 ### 必要な環境変数（`.dev.vars`）
 
 ```
+REQUEST_STATE_SECRET=<32+ byte HMAC key for MRTR requestState>
 STRIPE_SECRET_KEY=sk_test_...   # または rk_test_...（制限付きキー）
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRICE_ID=price_...
@@ -99,7 +100,7 @@ stripe trigger checkout.session.completed
 
 | Gate | コマンド | 内容 |
 |---|---|---|
-| G1 | `bash scripts/g1-test.sh` | ヘッダー検証、roll_dice、server/discover、tools/list |
+| G1 | `bash scripts/g1-test.sh` | ヘッダー検証（-32020）、roll_dice、server/discover、tools/list、legacy 拒否（-32022） |
 | G2 | `bash scripts/g2-test.sh` | MRTR ペイウォール 4 パターン |
 | G3 | `bash scripts/g3-test.sh <customer_id>` | Billing Meter event 計上確認 |
 
@@ -119,6 +120,7 @@ wrangler kv namespace create ENTITLEMENTS
 # → 出力された id を wrangler.jsonc の kv_namespaces[0].id に設定
 
 # 2. シークレットと本番 URL を設定
+wrangler secret put REQUEST_STATE_SECRET
 wrangler secret put STRIPE_SECRET_KEY
 wrangler secret put STRIPE_WEBHOOK_SECRET
 # wrangler.jsonc vars または secret で CHECKOUT_SUCCESS_URL / CHECKOUT_CANCEL_URL を設定
@@ -134,9 +136,8 @@ npm run deploy
 ```
 src/
 ├── index.ts                    # Hono app エントリ
-├── middleware/mcp-headers.ts   # 2026-07-28 ヘッダー検証
 ├── mcp/
-│   ├── handler.ts              # createMcpHandler ファクトリ
+│   ├── handler.ts              # createMcpHandler（legacy: reject, requestState codec）
 │   └── tools/premium-report.ts # MRTR ペイウォール
 ├── kv/entitlement.ts           # payment handle ライフサイクル
 └── stripe/
@@ -147,6 +148,7 @@ scripts/
 ├── g1-test.sh                  # G1 gate
 ├── g2-test.sh                  # G2 gate
 ├── g3-test.sh                  # G3 gate
+├── mint-request-state.mjs        # G2 用 signed requestState ミント
 └── setup-meter.sh              # Meter 初回作成
 article-harvest/
 └── paid-mcp-poc.md             # 記事化シード

@@ -2,13 +2,10 @@ import { createMcpHonoApp } from '@modelcontextprotocol/hono';
 import type { Context } from 'hono';
 import Stripe from 'stripe';
 import { getMcpHandler } from './mcp/handler';
-import { mcpHeaderValidation } from './middleware/mcp-headers';
 import { handleStripeWebhook } from './stripe/webhook';
 import type { Env } from './types';
 
 const app = createMcpHonoApp({ host: '0.0.0.0' });
-
-app.use('/mcp', mcpHeaderValidation());
 
 app.all('/mcp', (c: Context) => {
   const handler = getMcpHandler(c.env as Env);

@@ -35,6 +35,8 @@ Paid MCP PoC の設計判断と一次情報の記録。
 - ペイウォールは MRTR の `input_required` で表現する（Phase 2）。
 - `initialize` は実装しない。`server/discover` のみ実装（Phase 1）。
 - payment handle は SEP-2567 の「サーバー発行ハンドルをツール引数で戻す」パターンに従う。
+- `requestState` は `createRequestStateCodec` で HMAC 署名（`REQUEST_STATE_SECRET`、TTL 30 分、method バインド）。
+- `createMcpHandler({ legacy: 'reject' })` で 2026-07-28 のみ提供。SEP-2243 ヘッダー検証は SDK に委譲（`-32020` / `-32022`）。
 
 ---
 
