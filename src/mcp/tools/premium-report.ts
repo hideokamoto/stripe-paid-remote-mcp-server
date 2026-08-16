@@ -1,6 +1,6 @@
 import {
-  acceptedContent,
   inputRequired,
+  inputResponse,
   type McpServer,
   type RequestStateCodec,
 } from '@modelcontextprotocol/server';
@@ -79,8 +79,13 @@ export function registerPremiumReportTool(
         if (requestState) {
           const { handle: activeHandle, sessionId } = requestState;
 
-          // Log client payment acknowledgement; handle authority stays in signed requestState.
-          acceptedContent(ctx.mcpReq.inputResponses, 'payment');
+          const payment = inputResponse(ctx.mcpReq.inputResponses, 'payment');
+          if (payment.kind === 'elicit' && (payment.action === 'decline' || payment.action === 'cancel')) {
+            return {
+              isError: true,
+              content: [{ type: 'text' as const, text: 'Payment declined by client' }],
+            };
+          }
 
           const secretKey = env.STRIPE_SECRET_KEY;
           const stripe = secretKey ? createStripeClient(secretKey) : null;

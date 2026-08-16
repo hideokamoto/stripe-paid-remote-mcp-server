@@ -2,13 +2,20 @@ import { createMcpHonoApp } from '@modelcontextprotocol/hono';
 import type { Context } from 'hono';
 import Stripe from 'stripe';
 import { getMcpHandler } from './mcp/handler';
+import { validateMcpEnv } from './mcp/request-state';
 import { handleStripeWebhook } from './stripe/webhook';
 import type { Env } from './types';
 
 const app = createMcpHonoApp({ host: '0.0.0.0' });
 
 app.all('/mcp', (c: Context) => {
-  const handler = getMcpHandler(c.env as Env);
+  const env = c.env as Env;
+  const configError = validateMcpEnv(env);
+  if (configError) {
+    return c.json({ code: 'MCP_NOT_CONFIGURED', error: configError }, 503);
+  }
+
+  const handler = getMcpHandler(env);
   return handler.fetch(c.req.raw, { parsedBody: c.get('parsedBody') });
 });
 
@@ -16,7 +23,14 @@ app.post('/stripe/webhook', async (c: Context) =>
   handleStripeWebhook(c.req.raw, c.env as Env),
 );
 
-app.get('/health', (c) => c.json({ ok: true }));
+app.get('/health', (c) => {
+  const env = c.env as Env;
+  const configError = validateMcpEnv(env);
+  return c.json({
+    ok: true,
+    mcp: configError ? { ready: false, reason: configError } : { ready: true },
+  });
+});
 
 app.get('/stripe/ping', async (c: Context) => {
   const env = c.env as Env;

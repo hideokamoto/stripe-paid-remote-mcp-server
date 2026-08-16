@@ -68,6 +68,8 @@ bash scripts/setup-meter.sh   # Billing Meter 作成（初回のみ）
 npm run dev
 ```
 
+`GET /health` は `{ ok: true, mcp: { ready: true } }` を返します。`REQUEST_STATE_SECRET` 未設定時は `mcp.ready: false` と理由が含まれます。
+
 ### 必要な環境変数（`.dev.vars`）
 
 ```
@@ -108,6 +110,7 @@ stripe trigger checkout.session.completed
 npm run test:g1
 npm run test:g2
 npm run test:g3 <customer_id>
+npm test               # node:test ユニットテスト（C1/C2/C3）
 ```
 
 G2-1 には `_meta.clientCapabilities` に `elicitation: { url: {} }` が必要です。

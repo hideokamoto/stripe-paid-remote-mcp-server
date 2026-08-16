@@ -1,33 +1,10 @@
-import {
-  createMcpHandler,
-  createRequestStateCodec,
-  McpServer,
-  type RequestStateCodec,
-} from '@modelcontextprotocol/server';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
-import { registerPremiumReportTool, type PaymentRequestState } from './tools/premium-report';
+import { createPaymentStateCodec } from './request-state';
+import { registerPremiumReportTool } from './tools/premium-report';
 import type { Env } from '../types';
 
 const TOOLS_LIST_TTL_MS = 86_400_000;
-const PROTOCOL_VERSION = '2026-07-28';
-
-function requireRequestStateSecret(env: Env): string {
-  const key = env.REQUEST_STATE_SECRET;
-  if (!key || key.length < 32) {
-    throw new Error(
-      'REQUEST_STATE_SECRET must be set and at least 32 characters (spec 2026-07-28 requestState integrity)',
-    );
-  }
-  return key;
-}
-
-function createPaymentStateCodec(env: Env): RequestStateCodec<PaymentRequestState> {
-  return createRequestStateCodec<PaymentRequestState>({
-    key: requireRequestStateSecret(env),
-    ttlSeconds: 1_800,
-    bind: (ctx) => ctx.mcpReq.method ?? '',
-  });
-}
 
 function buildServer(env: Env): McpServer {
   const stateCodec = createPaymentStateCodec(env);
@@ -78,4 +55,4 @@ export function getMcpHandler(env: Env) {
   return cachedHandler;
 }
 
-export { TOOLS_LIST_TTL_MS, PROTOCOL_VERSION, createPaymentStateCodec };
+export { TOOLS_LIST_TTL_MS, createPaymentStateCodec };
