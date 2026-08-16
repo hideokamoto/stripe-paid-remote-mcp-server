@@ -1,11 +1,14 @@
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
+import { createPaymentStateCodec } from './request-state';
 import { registerPremiumReportTool } from './tools/premium-report';
 import type { Env } from '../types';
 
 const TOOLS_LIST_TTL_MS = 86_400_000;
 
 function buildServer(env: Env): McpServer {
+  const stateCodec = createPaymentStateCodec(env);
+
   const server = new McpServer(
     { name: 'stripe-paid-mcp', version: '0.1.0' },
     {
@@ -13,6 +16,7 @@ function buildServer(env: Env): McpServer {
       cacheHints: {
         'tools/list': { ttlMs: TOOLS_LIST_TTL_MS, cacheScope: 'public' },
       },
+      requestState: { verify: stateCodec.verify },
     },
   );
 
@@ -32,7 +36,7 @@ function buildServer(env: Env): McpServer {
     },
   );
 
-  registerPremiumReportTool(server, env);
+  registerPremiumReportTool(server, env, stateCodec);
 
   return server;
 }
@@ -43,9 +47,12 @@ let cachedEnv: Env | null = null;
 export function getMcpHandler(env: Env) {
   if (!cachedHandler || cachedEnv !== env) {
     cachedEnv = env;
-    cachedHandler = createMcpHandler(() => buildServer(env), { responseMode: 'json' });
+    cachedHandler = createMcpHandler(() => buildServer(env), {
+      responseMode: 'json',
+      legacy: 'reject',
+    });
   }
   return cachedHandler;
 }
 
-export { TOOLS_LIST_TTL_MS };
+export { TOOLS_LIST_TTL_MS, createPaymentStateCodec };

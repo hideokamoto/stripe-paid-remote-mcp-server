@@ -35,6 +35,9 @@ Paid MCP PoC の設計判断と一次情報の記録。
 - ペイウォールは MRTR の `input_required` で表現する（Phase 2）。
 - `initialize` は実装しない。`server/discover` のみ実装（Phase 1）。
 - payment handle は SEP-2567 の「サーバー発行ハンドルをツール引数で戻す」パターンに従う。
+- `requestState` は `createRequestStateCodec` で HMAC 署名（`REQUEST_STATE_SECRET`、TTL 30 分、`tools/call` + ツール名バインド。`Mcp-Name` ヘッダーをフォールバック）。
+- `createMcpHandler({ legacy: 'reject' })` で 2026-07-28 のみ提供。SEP-2243 ヘッダー検証は SDK に委譲（`-32020` / `-32022`）。
+- 設定不足時: `/health` の `mcp.ready` と `/mcp` の `503 MCP_NOT_CONFIGURED` で検知。
 
 ---
 
@@ -92,6 +95,8 @@ Paid MCP PoC の設計判断と一次情報の記録。
 ---
 
 ## D-004: G0 スパイク — SDK v2 on Workers + Hono（G0-b 判断）
+
+> **⚠️ Superseded (PR #2)**: 根拠 4 の `legacy: 'stateless'`（2025 クライアント同一エンドポイント）は `legacy: 'reject'` に変更済み。現行方針は D-001 参照。
 
 **判断**: **SDK v2 `createMcpHandler` を採用。手組み JSON-RPC には切り替えない。**
 

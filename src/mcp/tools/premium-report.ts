@@ -1,6 +1,8 @@
 import {
   inputRequired,
+  inputResponse,
   type McpServer,
+  type RequestStateCodec,
 } from '@modelcontextprotocol/server';
 import * as z from 'zod/v4';
 import {
@@ -16,18 +18,9 @@ import {
 import { recordPremiumReportExecution } from '../../stripe/metering';
 import type { Env } from '../../types';
 
-interface PaymentRequestState {
+export interface PaymentRequestState {
   handle: string;
   sessionId: string;
-}
-
-function parseRequestState(raw: string | undefined): PaymentRequestState | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as PaymentRequestState;
-  } catch {
-    return null;
-  }
 }
 
 async function executePremiumReport(
@@ -65,7 +58,11 @@ async function executePremiumReport(
   };
 }
 
-export function registerPremiumReportTool(server: McpServer, env: Env): void {
+export function registerPremiumReportTool(
+  server: McpServer,
+  env: Env,
+  stateCodec: RequestStateCodec<PaymentRequestState>,
+): void {
   server.registerTool(
     'premium_report',
     {
@@ -76,11 +73,19 @@ export function registerPremiumReportTool(server: McpServer, env: Env): void {
     },
     async ({ topic }, ctx) => {
       try {
-        const requestState = parseRequestState(ctx.mcpReq.requestState());
+        const requestState = ctx.mcpReq.requestState<PaymentRequestState>();
 
         // Retry path: client returned with inputResponses after payment
         if (requestState) {
           const { handle: activeHandle, sessionId } = requestState;
+
+          const payment = inputResponse(ctx.mcpReq.inputResponses, 'payment');
+          if (payment.kind === 'elicit' && (payment.action === 'decline' || payment.action === 'cancel')) {
+            return {
+              isError: true,
+              content: [{ type: 'text' as const, text: 'Payment declined by client' }],
+            };
+          }
 
           const secretKey = env.STRIPE_SECRET_KEY;
           const stripe = secretKey ? createStripeClient(secretKey) : null;
@@ -150,7 +155,7 @@ export function registerPremiumReportTool(server: McpServer, env: Env): void {
               message: `Payment required for premium report. Use payment_handle: ${paymentHandle}`,
             }),
           },
-          requestState: JSON.stringify(state),
+          requestState: await stateCodec.mint(state, ctx),
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

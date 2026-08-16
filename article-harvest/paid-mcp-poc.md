@@ -37,8 +37,8 @@ MCP プロトコルが 2026-07-28 でステートレス化し、セッション�
 
 ## コード参照ポイント
 
-- `src/middleware/mcp-headers.ts` — 2026-07-28 ヘッダー検証
-- `src/mcp/tools/premium-report.ts` — MRTR ペイウォール本体
+- `src/mcp/handler.ts` — `createMcpHandler`
+- `src/mcp/request-state.ts` — `createRequestStateCodec`
 - `src/stripe/webhook.ts` — `constructEventAsync`
 - `src/stripe/metering.ts` — meter event 送信
 
